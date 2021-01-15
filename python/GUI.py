@@ -71,7 +71,7 @@ class GUI:
         while True:
             if self.isPlaying:
                 self.scaler.set(self.scaler.get() + 1)
-            time.sleep(0.05)
+            #time.sleep(0.04)
             self.root.update_idletasks()
             self.root.update()
             if frameNumber != self.scaler.get():
