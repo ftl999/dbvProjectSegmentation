@@ -78,7 +78,6 @@ class GUI:
                 break
         self.canvas.delete("all")
         self.canvas2.delete("all")
-        self.showFrame()
       
     def play(self):
         self.isPlaying = (self.isPlaying + 1) % 2
@@ -95,5 +94,6 @@ class GUI:
 
 testGui = GUI()
 testGui.loadVideo()
-testGui.showFrame()
+while True:
+	testGui.showFrame()
 
