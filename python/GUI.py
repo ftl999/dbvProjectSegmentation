@@ -71,19 +71,31 @@ class GUI:
         self.playButton.place(x=self.width//10, y=4*self.height//6)
         self.run() 
        
+    def getorigin(self, eventorigin):
+        #global x0,y0
+        self.x0 = eventorigin.x
+        self.y0 = eventorigin.y
+        self.x0 = int(max(0,min(self.frameHeight-1,(self.x0 * self.factor))))
+        self.y0 = int(min(self.frameWidth-1,max(0,(self.y0*(self.frameWidth/(self.width//4))))))
+        print(self.x0,self.y0)
+        self.videocube[self.scaler.get()][self.x0][self.y0] = (np.ones(3, dtype=np.uint8) * 255)
+        self.showFrame()
+
     def showFrame(self):
         frameNumber = self.scaler.get()
         frame = self.videocube[frameNumber]
         edditedFrame = self.switchChannel(frame.copy())
-        factor = frame.shape[1] / (self.width//4)
-        frame = cv2.resize(frame, (self.width//4,int(frame.shape[0]/factor)))
-        edditedFrame = cv2.resize(edditedFrame, (self.width//4,int(edditedFrame.shape[0]/factor)))
+        self.factor = frame.shape[1] / (self.width//4)
+        frame = cv2.resize(frame, (self.width//4,int(frame.shape[0]/self.factor)))
+        edditedFrame = cv2.resize(edditedFrame, (self.width//4,int(edditedFrame.shape[0]/self.factor)))
         self.im[int(math.ceil(self.width//4-frame.shape[0])/2):-int((self.width//4-frame.shape[0])/2),:,:] = frame[:,:,::-1]
         self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
         img = ImageTk.PhotoImage(image=Image.fromarray(self.im))
         img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
         self.canvas.create_image(2,2, anchor="nw", image=img)
         self.canvas2.create_image(2,2, anchor="nw", image=img2)
+        
+        self.canvas.bind("<B1-Motion>",self.getorigin)
         while True:
             if self.isPlaying:
                 self.scaler.set(self.scaler.get() + 1)
