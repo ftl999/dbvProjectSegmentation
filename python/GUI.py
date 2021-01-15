@@ -10,11 +10,13 @@ import cv2
 import numpy as np
 from PIL import ImageTk, Image
 from screeninfo import get_monitors
+from tkinter import filedialog
 import time
 
 
+
 class GUI:
-    
+
     def __init__(self):
         self.width = get_monitors()[0].width
         self.height = get_monitors()[0].height
@@ -24,6 +26,15 @@ class GUI:
         self.canvas2 = tk.Canvas(self.root,width=(self.width//4),height=(self.width//4), highlightthickness = 2, highlightbackground = "black")
         self.canvas.place(x = self.width//6, y = self.height//6)
         self.canvas2.place(x = self.width-self.width//4-self.width//6, y = self.height//6)
+        self.menu = tk.Menu(self.root)
+        self.filemenu = tk.Menu(self.menu)
+#        self.submenu = tk.Menu(self.filemenu)
+#        self.submenu.add_command(label="Tsest")
+        self.filemenu.add_command(label='Load', underline=0, command=self.loadVideo)
+        self.filemenu.add_separator()
+        self.filemenu.add_command(label="Exit", underline=0, command=self.root.destroy)
+        self.menu.add_cascade(label="File", underline=0, menu=self.filemenu)
+        self.root.config(menu=self.menu)
         self.scaler = 0
         self.playButton = 0
         self.frameCount = 0
@@ -33,10 +44,14 @@ class GUI:
         self.im = 0
         self.im2 = 0
         self.isPlaying = 0
+        while True:
+        	self.root.update_idletasks()
+        	self.root.update()
         return
-    
+
     def loadVideo(self):
-        cap = cv2.VideoCapture('190301_02_KenyaWildlife_29_Trim.mp4')
+        file_path = filedialog.askopenfilename()
+        cap = cv2.VideoCapture(file_path)#('190301_02_KenyaWildlife_29_Trim.mp4')
         self.frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         self.frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -54,7 +69,8 @@ class GUI:
         self.im2 = np.zeros((self.width//4,self.width//4,3),dtype=np.uint8)
         self.playButton = tk.Button(self.root, text="Play", fg="red", command=self.play)
         self.playButton.place(x=self.width//10, y=4*self.height//6)
-        
+        self.run() 
+       
     def showFrame(self):
         frameNumber = self.scaler.get()
         frame = self.videocube[frameNumber]
@@ -71,7 +87,6 @@ class GUI:
         while True:
             if self.isPlaying:
                 self.scaler.set(self.scaler.get() + 1)
-            time.sleep(0.05)
             self.root.update_idletasks()
             self.root.update()
             if frameNumber != self.scaler.get():
@@ -90,10 +105,13 @@ class GUI:
         frame[:,:,1] = temp
         return frame
         
-
+    def run(self):
+        while True:
+            self.showFrame()
 
 testGui = GUI()
-testGui.loadVideo()
-while True:
-	testGui.showFrame()
+#testGui.loadVideo()
+
+#while True:
+#	testGui.showFrame()
 
