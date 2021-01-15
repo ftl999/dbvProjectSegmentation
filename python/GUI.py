@@ -9,7 +9,6 @@ import tkinter as tk
 import cv2
 import numpy as np
 from PIL import ImageTk, Image
-from win32api import GetSystemMetrics
 from screeninfo import get_monitors
 import time
 
