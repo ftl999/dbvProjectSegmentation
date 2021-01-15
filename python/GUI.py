@@ -9,7 +9,6 @@ import tkinter as tk
 import cv2
 import numpy as np
 from PIL import ImageTk, Image
-from win32api import GetSystemMetrics
 from screeninfo import get_monitors
 import time
 
@@ -79,7 +78,6 @@ class GUI:
                 break
         self.canvas.delete("all")
         self.canvas2.delete("all")
-        self.showFrame()
       
     def play(self):
         self.isPlaying = (self.isPlaying + 1) % 2
@@ -96,5 +94,6 @@ class GUI:
 
 testGui = GUI()
 testGui.loadVideo()
-testGui.showFrame()
+while True:
+	testGui.showFrame()
 
