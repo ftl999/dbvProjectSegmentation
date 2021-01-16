@@ -16,15 +16,14 @@ class PointExtractor(object):
         num_masked_pixels = cv2.findNonZero(gray_mask).shape[0]
         self.points = np.zeros((0,1,2), dtype=np.uint64)
         rect = cv2.boundingRect(cv2.findNonZero(gray_mask))
-        i = self.masked_image.copy()
         width = rect[2]
         height = rect[3]
         sqr = int(math.sqrt(num_parts))
         x_step = int(width / sqr)
         y_step = int(height / sqr)
+        if sqr <= 0:
+            raise Exception("num_parts was too low!")
         for p in range(num_parts):
-            if sqr <= 0:
-                raise Exception("num_parts was too low!")
             col = (p % sqr)
             row = int(p / sqr)
             min_x = int(col * x_step + rect[0])
@@ -34,9 +33,6 @@ class PointExtractor(object):
             new_rects = self.__do_extraction(((min_y, min_x), (max_y, max_x)))
             self.points = np.concatenate((self.points, new_rects), axis=0)
 
-        cv2.imshow("bb", i)
-        cv2.waitKey(5000)
-
     def __do_extraction(self, box: Tuple[Tuple[int, int], Tuple[int, int]]) -> np.ndarray:
         subMask = np.zeros(self.masked_image.shape, dtype=self.masked_image.dtype)
         for y in range(box[0][0], box[1][0] + 1):
@@ -44,7 +40,7 @@ class PointExtractor(object):
                 subMask[y, x] = self.masked_image[y, x]
 
         gray_mask = cv2.cvtColor(subMask, cv2.COLOR_BGR2GRAY)
-        return np.int0(cv2.goodFeaturesToTrack(gray_mask, 25, 0.01, 10, useHarrisDetector=True))
+        return np.int0(cv2.goodFeaturesToTrack(gray_mask, 25, 0.01, 20, useHarrisDetector=True))
         
         
     def renderPoints(self, image: np.ndarray):
