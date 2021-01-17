@@ -1,13 +1,23 @@
 import numpy as np
 import cv2, math, os ,sys
+
+from numpy.core.numeric import outer
 from ImageHelper import ImageHelper
 from typing import Tuple
 
 class PointExtractor(object):
     masked_image: np.ndarray = None
     points: np.ndarray = None
-
-    def __init__(self, image: np.ndarray, mask: np.ndarray, num_parts: int = 4):
+    points_per_subdivide: int = 1
+    subdivide_area: int = 0
+ 
+    def __init__(self, image: np.ndarray, mask: np.ndarray, subdivides: int = 2, granularity: float = 1e-4):
+        """
+            :param np.ndarray image: in color image
+            :param np.ndarray mask: in b/w image mask that selects area to extract points from
+            :param int subdivides: number of divides of the selected object. Can enhance the extraction of points
+            :param float granularity: defines how many points per pixels^2 should be extracted
+        """
         image_float = ImageHelper.let_it_float(image)
         mask_float = ImageHelper.let_it_float(mask)
         self.masked_image = image_float * mask_float
@@ -18,14 +28,16 @@ class PointExtractor(object):
         rect = cv2.boundingRect(cv2.findNonZero(gray_mask))
         width = rect[2]
         height = rect[3]
-        sqr = int(math.sqrt(num_parts))
-        x_step = int(width / sqr)
-        y_step = int(height / sqr)
-        if sqr <= 0:
-            raise Exception("num_parts was too low!")
-        for p in range(num_parts):
-            col = (p % sqr)
-            row = int(p / sqr)
+        x_step = int(width / subdivides)
+        y_step = int(height / subdivides)
+        self.subdivide_area = x_step * y_step
+        self.points_per_subdivide = max(1, int(self.subdivide_area * granularity))
+        
+        if subdivides <= 0:
+            raise Exception("subdivides was too low!")
+        for p in range(subdivides ** 2):
+            col = (p % subdivides)
+            row = int(p / subdivides)
             min_x = int(col * x_step + rect[0])
             min_y = int(row * y_step + rect[1])
             max_x = min_x + x_step
@@ -40,13 +52,17 @@ class PointExtractor(object):
                 subMask[y, x] = self.masked_image[y, x]
 
         gray_mask = cv2.cvtColor(subMask, cv2.COLOR_BGR2GRAY)
-        return np.int0(cv2.goodFeaturesToTrack(gray_mask, 25, 0.01, 20, useHarrisDetector=True))
+        min_dist = int(math.sqrt(self.subdivide_area / self.points_per_subdivide) / 2.0)
+        return np.int0(cv2.goodFeaturesToTrack(gray_mask, self.points_per_subdivide, 0.01, min_dist, useHarrisDetector=True))
         
         
-    def renderPoints(self, image: np.ndarray):
+    def renderPoints(self, image: np.ndarray, track_block_size: int = 10):
+        outer_color = (0,0,255)
+        inner_color = (255,0,0)
         for i in self.points:
             x,y = i.ravel()
-            cv2.circle(image,(int(x),int(y)),3,255,-1)
+            image = cv2.circle(image, (int(x), int(y)), track_block_size, outer_color, 1)
+            image = cv2.circle(image, (int(x), int(y)), 3, inner_color, -1)
         return image
 
 
@@ -61,5 +77,5 @@ if __name__ == "__main__":
     pe1 = PointExtractor(frame, mask)
     pointedImage = pe1.renderPoints(frame)
     cv2.imshow("Points", pointedImage)
-    cv2.imshow("Masked", pe1.masked_image)
+    #cv2.imshow("Masked", pe1.masked_image)
     cv2.waitKey(50000)
