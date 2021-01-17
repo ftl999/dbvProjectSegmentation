@@ -1,5 +1,6 @@
 import numpy as np
 import cv2, math, os ,sys
+from numpy.core.fromnumeric import sort
 
 from numpy.core.numeric import outer
 from ImageHelper import ImageHelper
@@ -44,6 +45,8 @@ class PointExtractor(object):
             max_y = min_y + y_step
             new_rects = self.__do_extraction(((min_y, min_x), (max_y, max_x)))
             self.points = np.concatenate((self.points, new_rects), axis=0)
+        
+        self.finalize()
 
     def __do_extraction(self, box: Tuple[Tuple[int, int], Tuple[int, int]]) -> np.ndarray:
         subMask = np.zeros(self.masked_image.shape, dtype=self.masked_image.dtype)
@@ -54,6 +57,22 @@ class PointExtractor(object):
         gray_mask = cv2.cvtColor(subMask, cv2.COLOR_BGR2GRAY)
         min_dist = int(math.sqrt(self.subdivide_area / self.points_per_subdivide) / 2.0)
         return np.int0(cv2.goodFeaturesToTrack(gray_mask, self.points_per_subdivide, 0.01, min_dist, useHarrisDetector=True))
+
+    def finalize(self):
+        min_dist = int(math.sqrt(self.subdivide_area / self.points_per_subdivide) / 2.0) * 0.9
+        idx_for_deletion = []
+        for i in range(self.points.shape[0]):
+            for j in range(i + 1, self.points.shape[0]):
+                pi = self.points[i][0]
+                pj = self.points[j][0]
+                dist = math.sqrt((pi[0] - pj[0]) ** 2 + (pi[1] - pj[1]) ** 2)
+                if dist < min_dist:
+                    idx_for_deletion.append(j)
+
+        idx_for_deletion = list(set(idx_for_deletion)) # make all indexes unique
+        idx_for_deletion.sort(reverse=True)
+        for i in idx_for_deletion:
+            self.points = np.delete(self.points, i, axis=0)
         
         
     def renderPoints(self, image: np.ndarray, track_block_size: int = 10):
