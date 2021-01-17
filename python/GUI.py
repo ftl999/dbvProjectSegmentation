@@ -11,13 +11,16 @@ import numpy as np
 from PIL import ImageTk, Image
 from screeninfo import get_monitors
 from tkinter import filedialog
-import time
+from ImagePipe import ImagePipe, PipeStageListener
 
 
 
-class GUI:
+class GUI(PipeStageListener):
 
     def __init__(self):
+        ## setting up for image pipe
+        ImagePipe.registerListener(self)
+
         self.width = get_monitors()[0].width
         self.height = get_monitors()[0].height
         self.root = tk.Tk()
@@ -48,6 +51,9 @@ class GUI:
         	self.root.update_idletasks()
         	self.root.update()
         return
+
+    def __onEndProcessing__(self, stage: str, result: np.ndarray):
+        print("Stage finished processing: " + stage)
 
     def loadVideo(self):
         file_path = filedialog.askopenfilename()
@@ -95,6 +101,8 @@ class GUI:
         self.canvas.create_image(2,2, anchor="nw", image=img)
         self.canvas2.create_image(2,2, anchor="nw", image=img2)
         
+        ImagePipe.process(frame)
+
         self.canvas.bind("<B1-Motion>",self.getorigin)
         while True:
             if self.isPlaying:
@@ -121,9 +129,10 @@ class GUI:
         while True:
             self.showFrame()
 
-testGui = GUI()
-#testGui.loadVideo()
+if __name__ == "__main__":
+    testGui = GUI()
+    #testGui.loadVideo()
 
-#while True:
-#	testGui.showFrame()
+    #while True:
+    #	testGui.showFrame()
 
