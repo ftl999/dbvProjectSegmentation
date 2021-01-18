@@ -61,8 +61,6 @@ class PointExtractor(PipeStageProcessor):
     def __render__(self, result: Tuple[ResultType, object], size: Tuple[int, int]) -> np.ndarray:
         image = np.zeros((size[0], size[1], 3), dtype=np.uint8)
         image = self.renderPoints(image, result[1])
-        cv2.imshow("Points", image)
-        cv2.waitKey(50000)
         return image
 
     def __do_extraction(self, box: Tuple[Tuple[int, int], Tuple[int, int]]) -> np.ndarray:
