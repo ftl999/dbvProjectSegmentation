@@ -17,6 +17,10 @@ class ResultType(Enum):
     Image = 0
     PointsArray = 1
 
+class InactivePipeStageException(Exception):
+    def __str__(self):
+        return "InactivePipeStageException: " + super().__str__()
+
 class PipeStageProcessor(object):
     def __init__(self) -> None:
         super().__init__()
@@ -70,6 +74,7 @@ class ProcessingPipe:
         if not (result is None):
             ProcessingPipe.__results["original"] = result
         processing = len(startAt) == 0
+        lastStage = "original"
         for stage in ProcessingPipe.__stages:
             if not processing and stage != startAt:
                 continue
@@ -85,6 +90,9 @@ class ProcessingPipe:
                         params.append((stage.name, result))
                     result = processor.__process__(params)
                     ProcessingPipe.__results[stage.name] = result
+                except InactivePipeStageException as e:
+                    # end processing if inactive
+                    return ProcessingPipe.__results[lastStage]
                 except Exception as e:
                     print("Error in processor: " + str(processor.__class__))
                     traceback.print_exc()
@@ -95,12 +103,20 @@ class ProcessingPipe:
                 res_img = processor.__render__(result, renderSize)
             for listener in stage.listeners:
                 listener.__onEndProcessing__(stage.name, res_img)
+            lastStage = stage.name
 
         return result
 
     @staticmethod
     def getStages() -> List[str]:
         return [stage.name for stage in ProcessingPipe.__stages]
+
+    @staticmethod
+    def getStageByName(name: str) -> PipeStage:
+        for stage in ProcessingPipe.__stages:
+            if stage.name == name:
+                return stage
+        return None
 
     @staticmethod
     def registerListener(listener: PipeStageListener, stage_name: str = None):
