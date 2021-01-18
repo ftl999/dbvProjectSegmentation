@@ -14,9 +14,7 @@ from tkinter import filedialog
 from ProcessingPipe import ProcessingPipe, PipeStageListener
 
 
-
 class GUI(PipeStageListener):
-
     def __init__(self):
         ## setting up for image pipe
         ProcessingPipe.registerListener(self)
