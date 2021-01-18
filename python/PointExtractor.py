@@ -3,7 +3,7 @@ import numpy as np
 import cv2, math, os ,sys
 from ImageHelper import ImageHelper
 from typing import Tuple, List
-from ImagePipe import PipeStageProcessor, ResultType
+from ProcessingPipe import PipeStageProcessor, ResultType
 
 class PointExtractor(PipeStageProcessor):
     masked_image: np.ndarray = None

@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from ImagePipe import PipeStageProcessor, ResultType
+from ProcessingPipe import PipeStageProcessor, ResultType
 from typing import Tuple, List
 
 class ImageHelper:

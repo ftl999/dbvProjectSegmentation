@@ -11,7 +11,7 @@ import numpy as np
 from PIL import ImageTk, Image
 from screeninfo import get_monitors
 from tkinter import filedialog
-from ImagePipe import ImagePipe, PipeStageListener
+from ProcessingPipe import ProcessingPipe, PipeStageListener
 
 
 
@@ -19,7 +19,7 @@ class GUI(PipeStageListener):
 
     def __init__(self):
         ## setting up for image pipe
-        ImagePipe.registerListener(self)
+        ProcessingPipe.registerListener(self)
 
         self.width = get_monitors()[0].width
         self.height = get_monitors()[0].height
@@ -101,7 +101,7 @@ class GUI(PipeStageListener):
         self.canvas.create_image(2,2, anchor="nw", image=img)
         self.canvas2.create_image(2,2, anchor="nw", image=img2)
         
-        ImagePipe.process(frame)
+        ProcessingPipe.process(frame)
 
         self.canvas.bind("<B1-Motion>",self.getorigin)
         while True:
