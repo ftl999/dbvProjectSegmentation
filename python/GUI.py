@@ -57,7 +57,7 @@ class GUI(PipeStageListener):
 
     def __onEndProcessing__(self, stage: str, result: np.ndarray):
         print("Stage finished processing: " + stage)
-        if not result is None:
+        if not (result is None):
             edditedFrame = cv2.resize(result.copy(), (self.width//4,int(result.shape[0]/self.factor)))
             self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
             self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
