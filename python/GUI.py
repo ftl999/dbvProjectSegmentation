@@ -11,7 +11,7 @@ import numpy as np
 from PIL import ImageTk, Image
 from screeninfo import get_monitors
 from tkinter import filedialog
-from ImagePipe import ImagePipe, PipeStageListener
+from ProcessingPipe import ProcessingPipe, PipeStageListener
 
 
 
@@ -19,7 +19,7 @@ class GUI(PipeStageListener):
 
     def __init__(self):
         ## setting up for image pipe
-        ImagePipe.registerListener(self)
+        ProcessingPipe.registerListener(self)
 
         self.width = get_monitors()[0].width
         self.height = get_monitors()[0].height
@@ -47,14 +47,26 @@ class GUI(PipeStageListener):
         self.lastPoint = 0
         self.im = 0
         self.im2 = 0
+        self.im = np.zeros((self.width//4, self.width//4,3), dtype=np.uint8)
+        self.im2 = np.zeros((self.width//4, self.width//4,3), dtype=np.uint8)
         self.isPlaying = 0
-        while True:
-        	self.root.update_idletasks()
-        	self.root.update()
-        return
+
+        self.img = ImageTk.PhotoImage(image=Image.fromarray(self.im))
+        self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
+        self.canvasImg = self.canvas.create_image(2,2, anchor="nw", image=self.img)
+        self.canvasImg2 = self.canvas2.create_image(2,2, anchor="nw", image=self.img2)
+
+        self.root.mainloop()
 
     def __onEndProcessing__(self, stage: str, result: np.ndarray):
         print("Stage finished processing: " + stage)
+        if not (result is None):
+            edditedFrame = cv2.resize(result.copy(), (self.width//4,int(result.shape[0]/self.factor)))
+            self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
+            self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
+            self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
+            self.root.update_idletasks()
+            self.root.update()
 
     def loadVideo(self):
         file_path = filedialog.askopenfilename()
@@ -100,20 +112,17 @@ class GUI(PipeStageListener):
 
     def showFrame(self):
         frameNumber = self.scaler.get()
-        frame = self.videocube[frameNumber]
-        edditedFrame = self.switchChannel(frame.copy())
-        self.factor = frame.shape[1] / (self.width//4)
-        frame = cv2.resize(frame, (self.width//4,int(frame.shape[0]/self.factor)))
+        fullFrame = self.videocube[frameNumber]
+        edditedFrame = self.switchChannel(fullFrame.copy())
+        self.factor = fullFrame.shape[1] / (self.width//4)
+        frame = cv2.resize(fullFrame.copy(), (self.width//4,int(fullFrame.shape[0]/self.factor)))
         edditedFrame = cv2.resize(edditedFrame, (self.width//4,int(edditedFrame.shape[0]/self.factor)))
         self.im[int(math.ceil(self.width//4-frame.shape[0])/2):-int((self.width//4-frame.shape[0])/2),:,:] = frame[:,:,::-1]
         self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
-        img = ImageTk.PhotoImage(image=Image.fromarray(self.im))
-        img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
-        self.canvas.create_image(2,2, anchor="nw", image=img)
-        self.canvas2.create_image(2,2, anchor="nw", image=img2)
-        
-        #ImagePipe.process(frame)
-
+        self.img = ImageTk.PhotoImage(image=Image.fromarray(self.im))
+        self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
+        self.canvas.itemconfig(self.canvasImg, image=self.img)
+        self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
         self.canvas.bind("<B1-Motion>",self.getorigin)
         self.canvas.bind("<ButtonRelease-1>",self.resetLastPoint)
         
@@ -124,8 +133,8 @@ class GUI(PipeStageListener):
             self.root.update()
             if frameNumber != self.scaler.get():
                 break
-        self.canvas.delete("all")
-        self.canvas2.delete("all")
+        #self.canvas.delete("all")
+        #self.canvas2.delete("all")
       
     def play(self):
         self.isPlaying = (self.isPlaying + 1) % 2

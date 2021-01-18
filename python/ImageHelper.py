@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from ImagePipe import PipeStageProcessor, ResultType
+from ProcessingPipe import PipeStageProcessor, ResultType
 from typing import Tuple, List
 
 class ImageHelper:
@@ -27,6 +27,7 @@ class ImageFloaterStage(PipeStageProcessor):
     def __process__(self, sources: List[Tuple[str, Tuple[ResultType, object]]]) -> Tuple[ResultType, object]:
         return (ResultType.Image, ImageHelper.let_it_float(sources[0][1][1]))
 
+
 class StaticImageInputStage(PipeStageProcessor):
     image: np.ndarray = None
 
@@ -36,3 +37,6 @@ class StaticImageInputStage(PipeStageProcessor):
 
     def __process__(self, sources: List[Tuple[str, Tuple[ResultType, object]]]) -> Tuple[ResultType, object]:
         return (ResultType.Image, self.image)
+
+    def __render__(self, result: Tuple[ResultType, object], size: Tuple[int, int]) -> np.ndarray:
+        return self.image

@@ -3,7 +3,7 @@ import numpy as np
 import cv2, math, os ,sys
 from ImageHelper import ImageHelper
 from typing import Tuple, List
-from ImagePipe import PipeStageProcessor, ResultType
+from ProcessingPipe import PipeStageProcessor, ResultType
 
 class PointExtractor(PipeStageProcessor):
     masked_image: np.ndarray = None
@@ -61,8 +61,6 @@ class PointExtractor(PipeStageProcessor):
     def __render__(self, result: Tuple[ResultType, object], size: Tuple[int, int]) -> np.ndarray:
         image = np.zeros((size[0], size[1], 3), dtype=np.uint8)
         image = self.renderPoints(image, result[1])
-        cv2.imshow("Points", image)
-        cv2.waitKey(50000)
         return image
 
     def __do_extraction(self, box: Tuple[Tuple[int, int], Tuple[int, int]]) -> np.ndarray:
