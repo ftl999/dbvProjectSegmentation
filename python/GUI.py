@@ -125,6 +125,8 @@ class GUI(PipeStageListener):
         self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
         self.canvas.bind("<B1-Motion>",self.getorigin)
         self.canvas.bind("<ButtonRelease-1>",self.resetLastPoint)
+
+        ProcessingPipe.process(fullFrame)
         
         while True:
             if self.isPlaying:
