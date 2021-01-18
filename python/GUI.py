@@ -44,6 +44,7 @@ class GUI(PipeStageListener):
         self.frameWidth = 0
         self.frameHeight = 0
         self.videocube = 0
+        self.lastPoint = 0
         self.im = 0
         self.im2 = 0
         self.isPlaying = 0
@@ -81,11 +82,21 @@ class GUI(PipeStageListener):
         #global x0,y0
         self.x0 = eventorigin.x
         self.y0 = eventorigin.y
-        self.x0 = int(max(0,min(self.frameHeight-1,(self.x0 * self.factor))))
-        self.y0 = int(min(self.frameWidth-1,max(0,(self.y0*(self.frameWidth/(self.width//4))))))
+        self.x0 = max(5, min(self.frameWidth-5-1, self.x0 * self.factor))#int(max(0,min(self.frameHeight-1,(self.x0 * self.factor))))
+        self.y0 = max(5,min(self.frameHeight-5-1,(self.y0-(self.width//4 - self.frameHeight//2)//2)*self.factor))#int(min(self.frameWidth-1,max(0,(self.y0*(self.frameWidth/(self.width//4))))))
         print(self.x0,self.y0)
-        self.videocube[self.scaler.get()][self.x0][self.y0] = (np.ones(3, dtype=np.uint8) * 255)
+        if self.lastPoint != 0:
+            self.videocube[self.scaler.get(),int(self.y0)-5:int(self.lastPoint[0])+5,int(self.x0)-5:int(self.lastPoint[1])+5] = (np.ones(3, dtype=np.uint8) * 255)
+            self.videocube[self.scaler.get(),int(self.lastPoint[0])-5:int(self.y0)+5,int(self.lastPoint[1])-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
+            self.videocube[self.scaler.get(),int(self.lastPoint[0])-5:int(self.y0)+5,int(self.x0)-5:int(self.lastPoint[1])+5] = (np.ones(3, dtype=np.uint8) * 255)
+            self.videocube[self.scaler.get(),int(self.y0)-5:int(self.lastPoint[0])+5,int(self.lastPoint[1])-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
+        else:
+            self.videocube[self.scaler.get(),int(self.y0)-5:int(self.y0)+5,int(self.x0)-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
+        self.lastPoint = [int(self.y0),int(self.x0)]
         self.showFrame()
+    
+    def resetLastPoint(self, eventRelease):
+        self.lastPoint = 0
 
     def showFrame(self):
         frameNumber = self.scaler.get()
@@ -101,9 +112,11 @@ class GUI(PipeStageListener):
         self.canvas.create_image(2,2, anchor="nw", image=img)
         self.canvas2.create_image(2,2, anchor="nw", image=img2)
         
-        ImagePipe.process(frame)
+        #ImagePipe.process(frame)
 
         self.canvas.bind("<B1-Motion>",self.getorigin)
+        self.canvas.bind("<ButtonRelease-1>",self.resetLastPoint)
+        
         while True:
             if self.isPlaying:
                 self.scaler.set(self.scaler.get() + 1)
