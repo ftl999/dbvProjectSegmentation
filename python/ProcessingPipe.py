@@ -94,9 +94,11 @@ class ProcessingPipe:
         ProcessingPipe.__lock.acquire()
         if ProcessingPipe.__isRunning == False:
             ProcessingPipe.__isRunning = True
-            threading.Thread(target=lambda: ProcessingPipe.__process(partialProcess)).start()
+            ProcessingPipe.__queue.put(lambda: ProcessingPipe.__process(partialProcess))
+            callback = ProcessingPipe.__queue.get(False)
+            threading.Thread(target=lambda: callback()).start()
         else:
-            ProcessingPipe.__queue.put(lambda: ProcessingPipe.process(partialProcess))
+            ProcessingPipe.__queue.put(lambda: ProcessingPipe.__process(partialProcess))
         ProcessingPipe.__lock.release()
 
     @staticmethod
@@ -143,15 +145,13 @@ class ProcessingPipe:
         except Exception as e:
             pass
         finally:
-            ProcessingPipe.__lock.acquire()
-            ProcessingPipe.__isRunning = False
-            ProcessingPipe.__lock.release()
-            
             try:
                 callback = ProcessingPipe.__queue.get(False)
                 callback()
             except queue.Empty:
-                pass
+                ProcessingPipe.__lock.acquire()
+                ProcessingPipe.__isRunning = False
+                ProcessingPipe.__lock.release()
         return result
 
     @staticmethod
