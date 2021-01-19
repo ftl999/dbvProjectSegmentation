@@ -101,8 +101,8 @@ class ProcessingPipe:
 
     @staticmethod
     def __process(partialProcess: List[StageType] = None) -> Tuple[ResultType, np.ndarray]:
+        result = (ResultType.Image, None)
         try:
-            result = (ResultType.Image, None)
             renderSize = None
             if not (result is None):
                 ProcessingPipe.__results[StageType(0)] = result
@@ -140,6 +140,8 @@ class ProcessingPipe:
                     for listener in stage.listeners:
                         listener.__onEndProcessing__(stage.name, res_img)
                 lastStage = stage.name
+        except Exception as e:
+            pass
         finally:
             ProcessingPipe.__lock.acquire()
             ProcessingPipe.__isRunning = False
