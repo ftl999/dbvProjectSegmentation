@@ -11,7 +11,8 @@ import numpy as np
 from PIL import ImageTk, Image
 from screeninfo import get_monitors
 from tkinter import filedialog
-from ProcessingPipe import ProcessingPipe, PipeStageListener
+from ProcessingPipe import ProcessingPipe, PipeStageListener, StageType
+import time
 
 
 class GUI(PipeStageListener):
@@ -47,46 +48,78 @@ class GUI(PipeStageListener):
         self.im2 = 0
         self.im = np.zeros((self.width//4, self.width//4,3), dtype=np.uint8)
         self.im2 = np.zeros((self.width//4, self.width//4,3), dtype=np.uint8)
-        self.isPlaying = 0
+        self.isPlaying = False
 
         self.img = ImageTk.PhotoImage(image=Image.fromarray(self.im))
         self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
         self.canvasImg = self.canvas.create_image(2,2, anchor="nw", image=self.img)
         self.canvasImg2 = self.canvas2.create_image(2,2, anchor="nw", image=self.img2)
 
+        self.pipeStages = [StageType.Video, StageType.Segmentation, StageType.PointExtraction]
+        self.lastFrameTime = time.time()
+        
+        self.root.bind('<Left>',self.leftKey)
+        self.root.bind('<Right>',self.rightKey)
+
         self.root.mainloop()
 
-    def __onEndProcessing__(self, stage: str, result: np.ndarray):
-        print("Stage finished processing: " + stage)
+    def leftKey(self, event):
+        if self.scaler.get() > 0:
+            self.scaler.set(self.scaler.get() - 1)
+        self.showFrame()
+
+    def rightKey(self, event):
+        if self.scaler.get() < self.frameCount:
+            self.scaler.set(self.scaler.get() + 1)
+        self.showFrame()
+
+    def __onEndProcessing__(self, stage: StageType, result: np.ndarray):
+        print("Stage finished processing: " + str(stage))
         if not (result is None):
             edditedFrame = cv2.resize(result.copy(), (self.width//4,int(result.shape[0]/self.factor)))
-            self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
-            self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
-            self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
+            if stage == StageType.Video:
+                self.im[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
+                self.img = ImageTk.PhotoImage(image=Image.fromarray(self.im))
+                self.canvas.itemconfig(self.canvasImg2, image=self.img)
+                if self.isPlaying == True:
+                    if self.scaler.get() < self.frameCount:
+                        self.scaler.set(self.scaler.get() + 1)
+                        self.showFrame()
+                    else:
+                        self.isPlaying = False
+            else:
+                self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
+                self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
+                self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
             self.root.update_idletasks()
             self.root.update()
 
+    def onScalerMouseDown(self):
+        self.pipeStages = [StageType.Video]
+        print("Mouse Down")
+
+    def onScalerMouseUp(self):
+        print("Mouse Up")
+        self.pipeStages = [StageType.Video, StageType.Segmentation, StageType.PointExtraction]
+        self.showFrame()
+    
     def loadVideo(self):
         file_path = filedialog.askopenfilename()
-        cap = cv2.VideoCapture(file_path)#('190301_02_KenyaWildlife_29_Trim.mp4')
-        self.frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        buffer = np.empty((self.frameCount, self.frameHeight, self.frameWidth, 3), np.dtype('uint8'))  #shape: (161, 1080, 1920, 3)
-        fc = 0
-        ret = True
-        while (fc < self.frameCount  and ret):
-            ret, buffer[fc] = cap.read()
-            fc += 1
-        self.videocube = buffer
-        cap.release()
-        self.scaler = tk.Scale(self.root, from_=0, to=self.frameCount-1, orient="horizontal")
+        print("Load Video")
+
+        vidProc = ProcessingPipe.getStageByName(StageType.Video).processors[0]
+        vidProc.loadVideo(file_path)
+        self.frameCount = vidProc.frameCount
+        self.frameWidth = vidProc.frameWidth
+        self.frameHeight = vidProc.frameHeight
+
+        self.scaler = tk.Scale(self.root, from_=0, to=self.frameCount-1, orient="horizontal", command=self.scalerChange)
         self.scaler.place(x = self.width//2-(3*self.width//4)//2 , y = 4*self.height//6, width = 3*self.width//4)
-        self.im = np.zeros((self.width//4,self.width//4,3),dtype=np.uint8)
-        self.im2 = np.zeros((self.width//4,self.width//4,3),dtype=np.uint8)
+        self.scaler.bind("<Button-1>", lambda x: self.onScalerMouseDown())
+        self.scaler.bind("<ButtonRelease-1>", lambda x: self.onScalerMouseUp())
         self.playButton = tk.Button(self.root, text="Play", fg="red", command=self.play)
         self.playButton.place(x=self.width//10, y=4*self.height//6)
-        self.run()
+        self.showFrame()
        
     def getorigin(self, eventorigin):
         #global x0,y0
@@ -109,36 +142,37 @@ class GUI(PipeStageListener):
         self.lastPoint = 0
 
     def showFrame(self):
+        if not self.isPlaying and (time.time() - self.lastFrameTime) < 0.1:
+            return
+
+        self.lastFrameTime = time.time()
         frameNumber = self.scaler.get()
-        fullFrame = self.videocube[frameNumber]
-        edditedFrame = self.switchChannel(fullFrame.copy())
-        self.factor = fullFrame.shape[1] / (self.width//4)
-        frame = cv2.resize(fullFrame.copy(), (self.width//4,int(fullFrame.shape[0]/self.factor)))
-        edditedFrame = cv2.resize(edditedFrame, (self.width//4,int(edditedFrame.shape[0]/self.factor)))
-        self.im[int(math.ceil(self.width//4-frame.shape[0])/2):-int((self.width//4-frame.shape[0])/2),:,:] = frame[:,:,::-1]
-        self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
-        self.img = ImageTk.PhotoImage(image=Image.fromarray(self.im))
-        self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
-        self.canvas.itemconfig(self.canvasImg, image=self.img)
-        self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
+        ProcessingPipe.getStageByName(StageType.Video).processors[0].framenumber = frameNumber
+        #fullFrame = self.videocube[frameNumber]
+        #edditedFrame = self.switchChannel(fullFrame.copy())
+        self.factor = self.frameWidth / (self.width//4)
+        #frame = cv2.resize(fullFrame.copy(), (self.width//4,int(fullFrame.shape[0]/self.factor)))
+        #edditedFrame = cv2.resize(edditedFrame, (self.width//4,int(edditedFrame.shape[0]/self.factor)))
+        #self.im[int(math.ceil(self.width//4-frame.shape[0])/2):-int((self.width//4-frame.shape[0])/2),:,:] = frame[:,:,::-1]
+        #self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
+        #self.img = ImageTk.PhotoImage(image=Image.fromarray(self.im))
+        #self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
+        #self.canvas.itemconfig(self.canvasImg, image=self.img)
+        #self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
         self.canvas.bind("<B1-Motion>",self.getorigin)
         self.canvas.bind("<ButtonRelease-1>",self.resetLastPoint)
 
-        ProcessingPipe.process(fullFrame)
-        
-        while True:
-            if self.isPlaying:
-                self.scaler.set(self.scaler.get() + 1)
-            self.root.update_idletasks()
-            self.root.update()
-            if frameNumber != self.scaler.get():
-                break
-        #self.canvas.delete("all")
-        #self.canvas2.delete("all")
+        ProcessingPipe.process(self.pipeStages)
       
     def play(self):
-        self.isPlaying = (self.isPlaying + 1) % 2
-        print(self.isPlaying)
+        ProcessingPipe.reset()
+        self.isPlaying = not self.isPlaying
+        if self.isPlaying:
+            print("PLAY!")
+            self.onScalerMouseDown()
+        else:
+            self.onScalerMouseUp()
+        self.showFrame()
     
         
     def switchChannel(self, frame):
@@ -147,9 +181,8 @@ class GUI(PipeStageListener):
         frame[:,:,1] = temp
         return frame
         
-    def run(self):
-        while True:
-            self.showFrame()
+    def scalerChange(self, evt):
+        self.showFrame()
 
 if __name__ == "__main__":
     testGui = GUI()

@@ -2,22 +2,8 @@ from enum import Enum
 from typing import Tuple, List, Dict
 import numpy as np
 import traceback
-
-class PipeStageListener:
-    def __onStartProcessing__(self, stage: str):
-        pass
-
-    def __onEndProcessing__(self, stage: str, result: np.ndarray):
-        pass
-
-    def __onProcessingError__(self, stage: str, error: str):
-        pass
-
-
-class ResultType(Enum):
-    Image = 0
-    PointsArray = 1
-
+import threading
+import queue
 
 class StageType(Enum):
     Video = 0
@@ -25,6 +11,21 @@ class StageType(Enum):
     PointExtraction = 2
     PointTracking = 3
     Skeletonize = 4
+
+class PipeStageListener:
+    def __onStartProcessing__(self, stage: StageType):
+        pass
+
+    def __onEndProcessing__(self, stage: StageType, result: np.ndarray):
+        pass
+
+    def __onProcessingError__(self, stage: StageType, error: str):
+        pass
+
+
+class ResultType(Enum):
+    Image = 0
+    PointsArray = 1
 
 
 class InactivePipeStageException(Exception):
@@ -35,7 +36,7 @@ class PipeStageProcessor(object):
     def __init__(self) -> None:
         super().__init__()
 
-    def __process__(self, sources: List[Tuple[str, Tuple[ResultType, object]]]) -> Tuple[ResultType, object]:
+    def __process__(self, sources: List[Tuple[StageType, Tuple[ResultType, object]]]) -> Tuple[ResultType, object]:
         raise Exception("Unimplemented!")
 
     def __render__(self, result: Tuple[ResultType, object], size: Tuple[int, int]) -> np.ndarray:
@@ -66,6 +67,17 @@ class ProcessingPipe:
     # stage_name, processors, in_stages(sources named)
     __stages: List[PipeStage] = []
     __results: Dict[StageType, Tuple[ResultType, object]] = { }
+    __isRunning: bool = False
+    __lock = threading.Lock()
+    __queue = queue.Queue()
+
+    @staticmethod
+    def reset():
+        while not ProcessingPipe.__queue.empty():
+            try:
+                ProcessingPipe.__queue.get(False)
+            except queue.Empty:
+                continue
 
     @staticmethod
     def addStage(name: StageType, processor: PipeStageProcessor, in_stages: List[StageType] = []):
@@ -78,43 +90,66 @@ class ProcessingPipe:
         ProcessingPipe.__stages.append(PipeStage(name, [processor], in_stages))
 
     @staticmethod
-    def process(image: np.ndarray = None, partialProcess: List[StageType] = None) -> Tuple[ResultType, np.ndarray]:
-        result = (ResultType.Image, image)
-        renderSize = (result[1].shape[0], result[1].shape[1])
-        if not (result is None):
-            ProcessingPipe.__results["original"] = result
-        processing = len(startAt) == 0
-        lastStage = "original"
-        for stage in ProcessingPipe.__stages:
-            if not processing and stage != startAt:
-                continue
-            
-            result = None
-            res_img = None
-            for listener in stage.listeners:
-                listener.__onStartProcessing__(stage.name)
-            for processor in stage.processors:
-                try:
-                    params = [(r, ProcessingPipe.__results[r]) for r in ProcessingPipe.__results.keys() if r in stage.in_stages]
-                    if not (result is None):
-                        params.append((stage.name, result))
-                    result = processor.__process__(params)
-                    ProcessingPipe.__results[stage.name] = result
-                except InactivePipeStageException as e:
-                    # end processing if inactive
-                    return ProcessingPipe.__results[lastStage]
-                except Exception as e:
-                    print("Error in processor: " + str(processor.__class__))
-                    traceback.print_exc()
+    def process(partialProcess: List[StageType] = None):
+        ProcessingPipe.__lock.acquire()
+        if ProcessingPipe.__isRunning == False:
+            ProcessingPipe.__isRunning = True
+            threading.Thread(target=lambda: ProcessingPipe.__process(partialProcess)).start()
+        else:
+            ProcessingPipe.__queue.put(lambda: ProcessingPipe.process(partialProcess))
+        ProcessingPipe.__lock.release()
+
+    @staticmethod
+    def __process(partialProcess: List[StageType] = None) -> Tuple[ResultType, np.ndarray]:
+        try:
+            result = (ResultType.Image, None)
+            renderSize = None
+            if not (result is None):
+                ProcessingPipe.__results[StageType(0)] = result
+            processing = (partialProcess is None)
+            lastStage = StageType(0)
+            for stage in ProcessingPipe.__stages:
+                if not processing and not (stage.name in partialProcess):
+                    continue
+                
+                result = None
+                res_img = None
+                for listener in stage.listeners:
+                    listener.__onStartProcessing__(stage.name)
+                for processor in stage.processors:
+                    try:
+                        params = [(r, ProcessingPipe.__results[r]) for r in ProcessingPipe.__results.keys() if r in stage.in_stages]
+                        if not (result is None):
+                            params.append((stage.name, result))
+                        result = processor.__process__(params)
+                        if renderSize is None and result[0] == ResultType.Image:
+                            renderSize = (result[1].shape[0], result[1].shape[1])
+                        ProcessingPipe.__results[stage.name] = result
+                    except InactivePipeStageException as e:
+                        # end processing if inactive
+                        result = ProcessingPipe.__results[lastStage]
+                        raise Exception()
+                    except Exception as e:
+                        print("Error in processor: " + str(processor.__class__))
+                        traceback.print_exc()
+                        for listener in stage.listeners:
+                            listener.__onProcessingError__(stage.name, str(e))
+                        raise Exception()
+
+                    res_img = processor.__render__(result, renderSize)
                     for listener in stage.listeners:
-                        listener.__onProcessingError__(stage.name, str(e))
-                    return result
-
-                res_img = processor.__render__(result, renderSize)
-            for listener in stage.listeners:
-                listener.__onEndProcessing__(stage.name, res_img)
-            lastStage = stage.name
-
+                        listener.__onEndProcessing__(stage.name, res_img)
+                lastStage = stage.name
+        finally:
+            ProcessingPipe.__lock.acquire()
+            ProcessingPipe.__isRunning = False
+            ProcessingPipe.__lock.release()
+            
+            try:
+                callback = ProcessingPipe.__queue.get(False)
+                callback()
+            except queue.Empty:
+                pass
         return result
 
     @staticmethod
@@ -122,7 +157,7 @@ class ProcessingPipe:
         return [stage.name for stage in ProcessingPipe.__stages]
 
     @staticmethod
-    def getStageByName(name: str) -> PipeStage:
+    def getStageByName(name: StageType) -> PipeStage:
         for stage in ProcessingPipe.__stages:
             if stage.name == name:
                 return stage
