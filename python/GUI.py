@@ -86,7 +86,7 @@ class GUI(PipeStageListener):
         self.im2 = np.zeros((self.width//4,self.width//4,3),dtype=np.uint8)
         self.playButton = tk.Button(self.root, text="Play", fg="red", command=self.play)
         self.playButton.place(x=self.width//10, y=4*self.height//6)
-        self.run() 
+        self.run()
        
     def getorigin(self, eventorigin):
         #global x0,y0

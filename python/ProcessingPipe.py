@@ -13,9 +13,19 @@ class PipeStageListener:
     def __onProcessingError__(self, stage: str, error: str):
         pass
 
+
 class ResultType(Enum):
     Image = 0
     PointsArray = 1
+
+
+class StageType(Enum):
+    Video = 0
+    Segmentation = 1
+    PointExtraction = 2
+    PointTracking = 3
+    Skeletonize = 4
+
 
 class InactivePipeStageException(Exception):
     def __str__(self):
@@ -39,12 +49,12 @@ class PipeStageProcessor(object):
 
 
 class PipeStage(object):
-    name: str = ""
+    name: StageType = None
     processors: List[PipeStageProcessor] = []
-    in_stages: List[str] = []
+    in_stages: List[StageType] = []
     listeners: List[PipeStageListener]
 
-    def __init__(self, name: str, processors: List[PipeStageProcessor], in_stages: List[str]):
+    def __init__(self, name: StageType, processors: List[PipeStageProcessor], in_stages: List[StageType]):
         super().__init__()
         self.name = name
         self.listeners = []
@@ -55,20 +65,20 @@ class PipeStage(object):
 class ProcessingPipe:
     # stage_name, processors, in_stages(sources named)
     __stages: List[PipeStage] = []
-    __results: Dict[str, Tuple[ResultType, object]] = { "original": None }
+    __results: Dict[StageType, Tuple[ResultType, object]] = { }
 
     @staticmethod
-    def addStage(name: str, processor: PipeStageProcessor, in_stages: List[str] = ["original"]):
+    def addStage(name: StageType, processor: PipeStageProcessor, in_stages: List[StageType] = []):
         for stage in ProcessingPipe.__stages:
             if stage.name == name:
                 stage.processors.append(processor)
-                if len(in_stages) > 1 or in_stages[0] != "original":
+                if len(in_stages) > 1:
                     raise Exception("You can't add new stages on a present pipe stage")
                 return
         ProcessingPipe.__stages.append(PipeStage(name, [processor], in_stages))
 
     @staticmethod
-    def process(image: np.ndarray = None, startAt: str = "") -> Tuple[ResultType, np.ndarray]:
+    def process(image: np.ndarray = None, partialProcess: List[StageType] = None) -> Tuple[ResultType, np.ndarray]:
         result = (ResultType.Image, image)
         renderSize = (result[1].shape[0], result[1].shape[1])
         if not (result is None):
