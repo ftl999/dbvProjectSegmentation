@@ -36,7 +36,7 @@ class PipeStageProcessor(object):
     def __init__(self) -> None:
         super().__init__()
 
-    def __process__(self, sources: List[Tuple[StageType, Tuple[ResultType, object]]]) -> Tuple[ResultType, object]:
+    def __process__(self, sources: Dict[StageType, Tuple[ResultType, object]]) -> Tuple[ResultType, object]:
         raise Exception("Unimplemented!")
 
     def __render__(self, result: Tuple[ResultType, object], size: Tuple[int, int]) -> np.ndarray:
@@ -120,9 +120,12 @@ class ProcessingPipe:
                     listener.__onStartProcessing__(stage.name)
                 for processor in stage.processors:
                     try:
-                        params = [(r, ProcessingPipe.__results[r]) for r in ProcessingPipe.__results.keys() if r in stage.in_stages]
+                        params: Dict[StageType, Tuple[ResultType, object]] = {}
+                        for r in ProcessingPipe.__results.keys():
+                            if r in stage.in_stages:
+                                params[r] = (r, ProcessingPipe.__results[r])
                         if not (result is None):
-                            params.append((stage.name, result))
+                            params[stage.name] = result
                         result = processor.__process__(params)
                         if renderSize is None and result[0] == ResultType.Image:
                             renderSize = (result[1].shape[0], result[1].shape[1])

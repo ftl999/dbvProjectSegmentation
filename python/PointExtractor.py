@@ -2,8 +2,8 @@ from operator import sub
 import numpy as np
 import cv2, math, os ,sys
 from ImageHelper import ImageHelper
-from typing import Tuple, List
-from ProcessingPipe import PipeStageProcessor, ResultType
+from typing import Tuple, Dict
+from ProcessingPipe import PipeStage, PipeStageProcessor, ResultType, StageType
 
 class PointExtractor(PipeStageProcessor):
     masked_image: np.ndarray = None
@@ -24,13 +24,13 @@ class PointExtractor(PipeStageProcessor):
         if self.__subdivides <= 0:
             raise Exception("subdivides was too low!")
 
-    def __process__(self, sources: List[Tuple[str, Tuple[ResultType, object]]]) -> Tuple[ResultType, object]:
+    def __process__(self, sources: Dict[StageType, Tuple[ResultType, object]]) -> Tuple[ResultType, object]:
         """
             :param sources: in color image and mask in some order
             :return: a list of good to track points
         """
-        image = sources[0][1][1]
-        mask = sources[1][1][1]
+        image = sources[StageType.Video][1][1]
+        mask = sources[StageType.Segmentation][1][1]
         image_float = ImageHelper.let_it_float(image)
         mask_float = ImageHelper.let_it_float(mask)
         self.masked_image = image_float * mask_float

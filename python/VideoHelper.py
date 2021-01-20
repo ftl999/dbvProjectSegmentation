@@ -1,7 +1,7 @@
 from ProcessingPipe import PipeStageProcessor, ResultType, InactivePipeStageException, StageType
 import cv2
 import numpy as np
-from typing import Tuple, List
+from typing import Tuple, Dict
 
 class FileVideoInputStage(PipeStageProcessor):
     cap: cv2.VideoCapture = None
@@ -16,7 +16,7 @@ class FileVideoInputStage(PipeStageProcessor):
         else:
             self.cap = None
 
-    def __process__(self, sources: List[Tuple[StageType, Tuple[ResultType, object]]]) -> Tuple[ResultType, object]:
+    def __process__(self, sources: Dict[StageType, Tuple[ResultType, object]]) -> Tuple[ResultType, object]:
         if self.cap is None:
             raise InactivePipeStageException()
         ret, self.frame = self.cap.read()
@@ -30,7 +30,7 @@ class VideoCubeStage(PipeStageProcessor):
         super().__init__()
         self.framenumber = 0
 
-    def __process__(self, sources: List[Tuple[StageType, Tuple[ResultType, object]]]) -> Tuple[ResultType, object]:
+    def __process__(self, sources: Dict[StageType, Tuple[ResultType, object]]) -> Tuple[ResultType, object]:
 
         newFrame = self.videocube[self.framenumber]
         if self.framenumber >= self.frameCount-1:
