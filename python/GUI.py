@@ -76,6 +76,7 @@ class GUI(PipeStageListener):
     def __onEndProcessing__(self, stage: StageType, result: np.ndarray):
         print("Stage finished processing: " + str(stage))
         if not (result is None):
+            print("   with result!")
             edditedFrame = cv2.resize(result.copy(), (self.width//4,int(result.shape[0]/self.factor)))
             if stage == StageType.Video:
                 self.im[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
@@ -170,6 +171,7 @@ class GUI(PipeStageListener):
         if self.isPlaying:
             print("PLAY!")
             self.onScalerMouseDown()
+            self.pipeStages.append(StageType.PointTracking)
         else:
             self.onScalerMouseUp()
         self.showFrame()

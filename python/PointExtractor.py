@@ -29,8 +29,8 @@ class PointExtractor(PipeStageProcessor):
             :param sources: in color image and mask in some order
             :return: a list of good to track points
         """
-        image = sources[StageType.Video][1][1]
-        mask = sources[StageType.Segmentation][1][1]
+        image = sources[StageType.Video][1]
+        mask = sources[StageType.Segmentation][1]
         image_float = ImageHelper.let_it_float(image)
         mask_float = ImageHelper.let_it_float(mask)
         self.masked_image = image_float * mask_float

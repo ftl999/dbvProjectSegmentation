@@ -123,7 +123,7 @@ class ProcessingPipe:
                         params: Dict[StageType, Tuple[ResultType, object]] = {}
                         for r in ProcessingPipe.__results.keys():
                             if r in stage.in_stages:
-                                params[r] = (r, ProcessingPipe.__results[r])
+                                params[r] = ProcessingPipe.__results[r]
                         if not (result is None):
                             params[stage.name] = result
                         result = processor.__process__(params)
