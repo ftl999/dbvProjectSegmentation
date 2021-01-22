@@ -72,6 +72,7 @@ class GUI(PipeStageListener):
             edditedFrame = np.where(non_zero, self.frameMasks[self.scaler.get()],result.copy())
             edditedFrame = cv2.resize(edditedFrame, (self.width//4,int(result.shape[0]/self.factor)))
             if stage == StageType.Video:
+                print("Größe: ", edditedFrame.shape[0])
                 self.im[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
                 self.img = ImageTk.PhotoImage(image=Image.fromarray(self.im))
                 self.canvas.itemconfig(self.canvasImg2, image=self.img)
@@ -121,8 +122,9 @@ class GUI(PipeStageListener):
         #global x0,y0
         self.x0 = eventorigin.x
         self.y0 = eventorigin.y
+        print(self.x0, self.y0)
         self.x0 = max(5, min(self.frameWidth-5-1, self.x0 * self.factor))#int(max(0,min(self.frameHeight-1,(self.x0 * self.factor))))
-        self.y0 = max(5,min(self.frameHeight-5-1,(self.y0-(self.width//(4*self.factor)))*self.factor))#(self.y0-(self.width//4 - self.frameHeight//2)//2)*self.factor))#int(min(self.frameWidth-1,max(0,(self.y0*(self.frameWidth/(self.width//4))))))
+        self.y0 = max(5,min(self.frameHeight-5-1,((self.y0*self.factor-((self.width//4)-(self.frameHeight//self.factor))))))#(self.y0-(self.width//4 - self.frameHeight//2)//2)*self.factor))#int(min(self.frameWidth-1,max(0,(self.y0*(self.frameWidth/(self.width//4))))))
         print(self.x0,self.y0)
         if self.lastPoint != 0:
             self.frameMasks[self.scaler.get(),int(self.y0)-5:int(self.lastPoint[0])+5,int(self.x0)-5:int(self.lastPoint[1])+5] = (np.ones(3, dtype=np.uint8) * 255)
@@ -131,7 +133,6 @@ class GUI(PipeStageListener):
             self.frameMasks[self.scaler.get(),int(self.y0)-5:int(self.lastPoint[0])+5,int(self.lastPoint[1])-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
         else:
             self.frameMasks[self.scaler.get(),int(self.y0)-5:int(self.y0)+5,int(self.x0)-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
-        print(self.frameMasks[self.scaler.get(), int(self.y0), int(self.x0)])
         self.lastPoint = [int(self.y0),int(self.x0)]
         self.showFrame()
     
@@ -182,10 +183,4 @@ class GUI(PipeStageListener):
     def scalerChange(self, evt):
         self.showFrame()
 
-if __name__ == "__main__":
-    testGui = GUI()
-    #testGui.loadVideo()
-
-    #while True:
-    #	testGui.showFrame()
 
