@@ -36,7 +36,7 @@ class VideoCubeStage(PipeStageProcessor):
         if self.framenumber >= self.frameCount-1:
             raise InactivePipeStageException()
         self.framenumber = self.framenumber+1
-        return (ResultType.Image, newFrame)
+        return (ResultType.Image, newFrame)#, self.frameMasks[self.framenumber])
 
     def __render__(self, result: Tuple[ResultType, object], size: Tuple[int, int]) -> np.ndarray:
         return self.videocube[self.framenumber]
@@ -54,3 +54,4 @@ class VideoCubeStage(PipeStageProcessor):
             fc += 1
         self.videocube = buffer
         cap.release()
+
