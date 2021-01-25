@@ -45,7 +45,7 @@ class SegmentationStage(PipeStageProcessor):
         if self.firstPoint == 0:
             self.firstPoint = self.lastPoint
 
-    def resetLastPoint(self, eventRelease):
+    def resetLastPoint(self):
         self.lastPoint = 0
         if self.firstPoint != 0:
             self.frameMasks[self.framenumber,int(self.y0)-5:int(self.firstPoint[0])+5,int(self.x0)-5:int(self.firstPoint[1])+5] = (np.ones(3, dtype=np.uint8) * 255)

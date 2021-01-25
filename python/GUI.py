@@ -171,10 +171,14 @@ class GUI(PipeStageListener):
 #        self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
         #self.canvas.itemconfig(self.canvasImg, image=self.img)
   #      self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
-        self.canvas.bind("<ButtonRelease-1>",self.segProc.resetLastPoint)#self.resetLastPoint)
+        self.canvas.bind("<ButtonRelease-1>",self.resetLastPoint)#self.resetLastPoint)
         self.canvas.bind("<B1-Motion>",self.getorigin)
 
         ProcessingPipe.process(self.pipeStages)
+        
+    def resetLastPoint(self, event):
+        self.segProc.resetLastPoint()
+        self.showFrame()
       
     def play(self):
         ProcessingPipe.reset()
