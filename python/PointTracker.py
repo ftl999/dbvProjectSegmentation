@@ -1,4 +1,4 @@
-from ProcessingPipe import PipeStageProcessor, ResultType, StageType, InactivePipeStageException
+from ProcessingPipe import PipeStageProcessor, ResultType, StageType, InactivePipeStageException, FunctionalPipeFailture
 from typing import Dict, Tuple, List
 import numpy as np
 import cv2
@@ -7,7 +7,7 @@ import traceback
 
 class PointTracker(PipeStageProcessor):
     points: np.ndarray = None
-    kalman: cv2.KalmanFilter = None
+    tracker = []
     regionSize: int = 3
     old_hists: List[np.ndarray] = []
     
@@ -15,23 +15,24 @@ class PointTracker(PipeStageProcessor):
         super().__init__()
         self.regionSize = regionSize
         self.old_hists = []
-        self.kalman = cv2.KalmanFilter(4, 2)
-        self.kalman.measurementMatrix = np.array([[1, 0, 0, 0],
-                                                [0, 1, 0, 0]], np.float32)
+        self.tracker = []
+        #self.kalman = cv2.KalmanFilter(4, 2)
+        #self.kalman.measurementMatrix = np.array([[1, 0, 0, 0],
+        #                                        [0, 1, 0, 0]], np.float32)
 
-        self.kalman.transitionMatrix = np.array([[1, 0, 1, 0],
-                                                [0, 1, 0, 1],
-                                                [0, 0, 1, 0],
-                                                [0, 0, 0, 1]], np.float32)
+        #self.kalman.transitionMatrix = np.array([[1, 0, 1, 0],
+        #                                        [0, 1, 0, 1],
+        #                                        [0, 0, 1, 0],
+        #                                        [0, 0, 0, 1]], np.float32)
 
-        self.kalman.processNoiseCov = np.array([[1, 0, 0, 0],
-                                                [0, 1, 0, 0],
-                                                [0, 0, 1, 0],
-                                                [0, 0, 0, 1]], np.float32) * 0.03
+        #self.kalman.processNoiseCov = np.array([[1, 0, 0, 0],
+        #                                        [0, 1, 0, 0],
+        #                                        [0, 0, 1, 0],
+        #                                        [0, 0, 0, 1]], np.float32) * 0.03
 
-        self.measurement = np.array((2, 1), np.float32)
-        self.prediction = np.zeros((2, 1), np.float32)
-        self.term_crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
+        #self.measurement = np.array((2, 1), np.float32)
+        #self.prediction = np.zeros((2, 1), np.float32)
+        #self.term_crit = (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 1)
         
 
     def __process__(self, sources: Dict[StageType, Tuple[ResultType, object]]) -> Tuple[ResultType, object]:
@@ -45,30 +46,58 @@ class PointTracker(PipeStageProcessor):
             else:
                 raise InactivePipeStageException()
         
-        self.old_hists = []
-        img_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        #self.old_hists = []
+        #img_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         #cv2.imshow("img_hsv", img_hsv)
         #cv2.waitKey(5000)
         predictedPoints = []
-        for p in old_points:
-            x,y = p.ravel()
+        prediction = (0, 0)
+        #first = True
+        for i in range(old_points.shape[0]):
+            x,y = old_points[i].ravel()
             p = (x, y)
+            prediction = p
             try:
-                region = self.getRegion(image, p)
-                hist = self.getHist(region)
-                self.old_hists.append(hist)
+                #region = self.getRegion(img_hsv, p)
+                #if first:
+                #    cv2.imshow("Region", region)
+                #    cv2.waitKey(1)
+                #    first = False
+                #hist = self.getHist(region)
+                #self.old_hists.append(hist)
             
-                img_bproject = cv2.calcBackProject(
-                    [img_hsv], [
-                        0, 1], hist, [
-                        0, 180, 0, 255], 1)
-                track_window = (
-                    int(p[0]) - int(self.regionSize / 2),
-                    int(p[1]) - int(self.regionSize / 2),
-                    self.regionSize,
-                    self.regionSize
-                )
-                ret, track_window = cv2.meanShift(img_bproject, track_window, self.term_crit)
+                #img_bproject = cv2.calcBackProject(
+                #    [img_hsv], [
+                #        0, 1], hist, [
+                #        0, 180, 0, 255], 1)
+
+                track_window = (0, 0, 0, 0)
+
+                if len(self.tracker) <= i:
+                    track_window = (
+                        int(p[0]) - int(self.regionSize / 2),
+                        int(p[1]) - int(self.regionSize / 2),
+                        self.regionSize,
+                        self.regionSize
+                    )
+                    tracker = cv2.TrackerKCF_create() #cv2.TrackerMedianFlow_create()
+                    ok = tracker.init(image, track_window)
+                    if ok:
+                        self.tracker.append(tracker)
+                    else:
+                        raise InactivePipeStageException()
+                else:
+                    ok, track_window = self.tracker[i].update(image)
+                    if not ok:
+                        track_window = (
+                            int(p[0]) - int(self.regionSize / 2),
+                            int(p[1]) - int(self.regionSize / 2),
+                            self.regionSize,
+                            self.regionSize
+                        )
+                        raise FunctionalPipeFailture("Tracking point failed!")
+
+                #ret, track_window = cv2.meanShift(img_bproject, track_window, self.term_crit)
                 x, y, w, h = track_window
                 #image_track_window = cv2.rectangle(image, track_window,(0,255,0),3)
                 #cv2.imshow("Track Window", image_track_window)
@@ -77,16 +106,17 @@ class PointTracker(PipeStageProcessor):
                 #pts = cv2.boxPoints(ret)
                 pts = [[x, y], [x+w, y], [x+w, y+h], [x, y+h]]
                 pts = np.int0(pts)
-                self.kalman.correct(self.getCenter(pts))
+                prediction = self.getCenter(pts)
+                #self.kalman.correct(center)
             except Exception as e:
                 print("Tracker Exception in point: " + str(p) + " -> " + str(e))
                 traceback.print_exc()
             finally:
-                prediction = self.kalman.predict()
-                if prediction[0] < 0 or prediction[0] > image.shape[1]:
-                    prediction[0] = p[0]
-                if prediction[1] < 0 or prediction[1] > image.shape[0]:
-                    prediction[1] = p[1]
+                #prediction = self.kalman.predict()
+                #if prediction[0] < 0 or prediction[0] > image.shape[1]:
+                #    prediction[0] = p[0]
+                #if prediction[1] < 0 or prediction[1] > image.shape[0]:
+                #    prediction[1] = p[1]
                 predictedPoints.append([int(prediction[0]), int(prediction[1])])
 
         return (ResultType.PointsArray, np.int0(predictedPoints))
@@ -106,7 +136,7 @@ class PointTracker(PipeStageProcessor):
         image = np.zeros((size[0], size[1], 3), dtype=np.uint8)
         for p in result[1]:
             x,y = p.ravel()
-            image = cv2.circle(image, (int(x), int(y)), self.regionSize,(0,255,0),2)
+            image = cv2.circle(image, (int(x), int(y)), int(self.regionSize / 2),(0,255,0),2)
         return image      
 
     def getRegion(self, frame: np.ndarray, point: np.ndarray) -> np.ndarray:

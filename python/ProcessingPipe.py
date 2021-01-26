@@ -22,6 +22,9 @@ class PipeStageListener:
     def __onProcessingError__(self, stage: StageType, error: str):
         pass
 
+    def __onProcessingAbort__(self, stage: StageType, error: str):
+        pass
+
 
 class ResultType(Enum):
     Image = 0
@@ -31,6 +34,10 @@ class ResultType(Enum):
 class InactivePipeStageException(Exception):
     def __str__(self):
         return "InactivePipeStageException: " + super().__str__()
+
+class FunctionalPipeFailture(Exception):
+    def __str__(self):
+        return "FunctionalPipeFailture: " + super().__str__()
 
 class PipeStageProcessor(object):
     def __init__(self) -> None:
@@ -134,6 +141,9 @@ class ProcessingPipe:
                         # end processing if inactive
                         result = ProcessingPipe.__results[lastStage]
                         raise Exception()
+                    except FunctionalPipeFailture as e:
+                        for listener in stage.listeners:
+                            listener.__onProcessingAbort__(stage.name, str(e))
                     except Exception as e:
                         print("Error in processor: " + str(processor.__class__))
                         traceback.print_exc()

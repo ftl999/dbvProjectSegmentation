@@ -12,6 +12,6 @@ if __name__ == "__main__":
     ProcessingPipe.addStage(StageType.Segmentation, SegmentationStage(), [StageType.Video])
 #StaticImageInputStage(cv2.imread(os.path.join(os.path.dirname(sys.argv[0]), "Mask.png"))))
     ProcessingPipe.addStage(StageType.PointExtraction, PointExtractor(), [StageType.Video, StageType.Segmentation])
-    ProcessingPipe.addStage(StageType.PointTracking, PointTracker(10), [StageType.PointExtraction, StageType.Video, StageType.PointTracking])
+    ProcessingPipe.addStage(StageType.PointTracking, PointTracker(60), [StageType.PointExtraction, StageType.Video, StageType.PointTracking])
     
     gui = GUI()

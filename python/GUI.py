@@ -64,6 +64,9 @@ class GUI(PipeStageListener):
             self.scaler.set(self.scaler.get() + 1)
         self.showFrame()
 
+    def __onProcessingAbort__(self, stage: StageType, error: str):
+        print(error)
+
     def __onEndProcessing__(self, stage: StageType, result: np.ndarray):
         print("Stage finished processing: " + str(stage))
         if not (result is None):
@@ -85,12 +88,15 @@ class GUI(PipeStageListener):
                         self.isPlaying = False
             else:
                 self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
+                self.im2 = cv2.addWeighted(self.im2, 0.5, self.im, 0.5, 1.0)
                 self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
                 self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
             self.root.update_idletasks()
             self.root.update()
 
     def onScalerMouseDown(self):
+        #if self.isPlaying:
+        #    self.isPlaying = False
         self.pipeStages = [StageType.Video]
         print("Mouse Down")
 
@@ -102,8 +108,9 @@ class GUI(PipeStageListener):
     
     def loadVideo(self):
         file_path = filedialog.askopenfilename()
+        #file_path = "Simple_Background_Wink.mp4"
         print("Load Video")
-
+        
         vidProc = ProcessingPipe.getStageByName(StageType.Video).processors[0]
         vidProc.loadVideo(file_path)
         self.frameCount = vidProc.frameCount
