@@ -1,7 +1,9 @@
+from tkinter import Image
 from ProcessingPipe import PipeStageProcessor, ResultType, InactivePipeStageException, StageType
 import cv2
 import numpy as np
 from typing import Tuple, Dict
+from ImageHelper import ImageHelper
 
 
 class SegmentationStage(PipeStageProcessor):
@@ -53,6 +55,14 @@ class SegmentationStage(PipeStageProcessor):
             self.frameMasks[self.framenumber,int(self.firstPoint[0])-5:int(self.y0)+5,int(self.x0)-5:int(self.firstPoint[1])+5] = (np.ones(3, dtype=np.uint8) * 255)
             self.frameMasks[self.framenumber,int(self.y0)-5:int(self.firstPoint[0])+5,int(self.firstPoint[1])-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
         self.firstPoint = 0
+
+        #grayMask = ImageHelper.make_it_gray(self.frameMasks[self.framenumber])
+        #im2, contours = cv2.findContours(grayMask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+        self.frameMasks[self.framenumber] = cv2.morphologyEx(self.frameMasks[self.framenumber], cv2.MORPH_CLOSE, np.ones((5,5),np.uint8), iterations=100)
+        #cv2.fillPoly(grayMask, )
+        #con = cv2.floodFill(self.frameMasks[self.framenumber], mask=None)
+        print("YUHUU")
+        
 
 
     def update_framenumber(self,fn):

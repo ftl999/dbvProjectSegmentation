@@ -3,7 +3,7 @@ import numpy as np
 import cv2, math, os ,sys
 from ImageHelper import ImageHelper
 from typing import Tuple, Dict
-from ProcessingPipe import PipeStage, PipeStageProcessor, ResultType, StageType
+from ProcessingPipe import InactivePipeStageException, PipeStage, PipeStageProcessor, ResultType, StageType
 
 class PointExtractor(PipeStageProcessor):
     masked_image: np.ndarray = None
@@ -31,6 +31,10 @@ class PointExtractor(PipeStageProcessor):
         """
         image = sources[StageType.Video][1]
         mask = sources[StageType.Segmentation][1]
+
+        if image is None or mask is None:
+            raise InactivePipeStageException()
+
         image_float = ImageHelper.let_it_float(image)
         mask_float = ImageHelper.let_it_float(mask)
         self.masked_image = image_float * mask_float

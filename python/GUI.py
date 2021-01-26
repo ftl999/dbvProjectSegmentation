@@ -83,8 +83,7 @@ class GUI(PipeStageListener):
                         self.showFrame()
                     else:
                         self.isPlaying = False
-            elif stage == StageType.Segmentation:
-                print("stage = segmentation")
+            else:
                 self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
                 self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
                 self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
@@ -126,33 +125,9 @@ class GUI(PipeStageListener):
 #        self.x0 = eventorigin.x
 #        self.y0 = eventorigin.y
         self.segProc.draw_mask(eventorigin.x, eventorigin.y, self.factor, self.width, self.frameHeight, self.frameWidth, self.scaler.get(), self.frameCount)
-        self.pipeStages = [StageType.Video,StageType.Segmentation]
+        self.pipeStages = [StageType.Video, StageType.Segmentation, StageType.PointExtraction]
         self.showFrame()
-#        self.x0 = max(5, min(self.frameWidth-5-1, self.x0 * self.factor))
-#        self.y0 = max(5,min(self.frameHeight-5-1,((self.y0-(((self.width//4)-(self.frameHeight//self.factor)))/2)*self.factor)))
-#        if self.lastPoint != 0:
-#            self.frameMasks[self.scaler.get(),int(self.y0)-5:int(self.lastPoint[0])+5,int(self.x0)-5:int(self.lastPoint[1])+5] = (np.ones(3, dtype=np.uint8) * 255)
-#            self.frameMasks[self.scaler.get(),int(self.lastPoint[0])-5:int(self.y0)+5,int(self.lastPoint[1])-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
-#            self.frameMasks[self.scaler.get(),int(self.lastPoint[0])-5:int(self.y0)+5,int(self.x0)-5:int(self.lastPoint[1])+5] = (np.ones(3, dtype=np.uint8) * 255)
-#            self.frameMasks[self.scaler.get(),int(self.y0)-5:int(self.lastPoint[0])+5,int(self.lastPoint[1])-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
-#        else:
-#            self.frameMasks[self.scaler.get(),int(self.y0)-5:int(self.y0)+5,int(self.x0)-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
-#        self.lastPoint = [int(self.y0),int(self.x0)]
-#        if self.firstPoint == 0:
-#            self.firstPoint = self.lastPoint
-#        self.showFrame()
-#    
-#    def resetLastPoint(self, eventRelease):
-#        self.lastPoint = 0
-#        if self.firstPoint != 0:
-#            self.frameMasks[self.scaler.get(),int(self.y0)-5:int(self.firstPoint[0])+5,int(self.x0)-5:int(self.firstPoint[1])+5] = (np.ones(3, dtype=np.uint8) * 255)
-#            self.frameMasks[self.scaler.get(),int(self.firstPoint[0])-5:int(self.y0)+5,int(self.firstPoint[1])-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
-#            self.frameMasks[self.scaler.get(),int(self.firstPoint[0])-5:int(self.y0)+5,int(self.x0)-5:int(self.firstPoint[1])+5] = (np.ones(3, dtype=np.uint8) * 255)
-#            self.frameMasks[self.scaler.get(),int(self.y0)-5:int(self.firstPoint[0])+5,int(self.firstPoint[1])-5:int(self.x0)+5] = (np.ones(3, dtype=np.uint8) * 255)
-#        self.firstPoint = 0
-#        time.sleep(0.1)
-#        self.showFrame()
-#
+
     def showFrame(self):
         if not self.isPlaying and (time.time() - self.lastFrameTime) < 0.1:
             return
@@ -160,18 +135,8 @@ class GUI(PipeStageListener):
         self.lastFrameTime = time.time()
         frameNumber = self.scaler.get()
         ProcessingPipe.getStageByName(StageType.Video).processors[0].framenumber = frameNumber
-        #fullFrame = self.videocube[frameNumber]
- #       edditedFrame = self.frameMasks[frameNumber]#self.switchChannel(fullFrame.copy())
         self.factor = self.frameWidth / (self.width//4)
-        #frame = cv2.resize(fullFrame.copy(), (self.width//4,int(fullFrame.shape[0]/self.factor)))
-        #edditedFrame = cv2.resize(edditedFrame, (self.width//4,int(edditedFrame.shape[0]/self.factor)))
-        #self.im[int(math.ceil(self.width//4-frame.shape[0])/2):-int((self.width//4-frame.shape[0])/2),:,:] = frame[:,:,::-1]
-#        self.im2[int(math.ceil(self.width//4-edditedFrame.shape[0])/2):-int((self.width//4-edditedFrame.shape[0])/2),:,:] = edditedFrame[:,:,::-1]
-        #self.img = ImageTk.PhotoImage(image=Image.fromarray(self.im))
-#        self.img2 = ImageTk.PhotoImage(image=Image.fromarray(self.im2))
-        #self.canvas.itemconfig(self.canvasImg, image=self.img)
-  #      self.canvas2.itemconfig(self.canvasImg2, image=self.img2)
-        self.canvas.bind("<ButtonRelease-1>",self.resetLastPoint)#self.resetLastPoint)
+        self.canvas.bind("<ButtonRelease-1>",self.resetLastPoint)
         self.canvas.bind("<B1-Motion>",self.getorigin)
 
         ProcessingPipe.process(self.pipeStages)

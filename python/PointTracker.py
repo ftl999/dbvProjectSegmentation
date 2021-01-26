@@ -3,6 +3,7 @@ from typing import Dict, Tuple, List
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
+import traceback
 
 class PointTracker(PipeStageProcessor):
     points: np.ndarray = None
@@ -79,6 +80,7 @@ class PointTracker(PipeStageProcessor):
                 self.kalman.correct(self.getCenter(pts))
             except Exception as e:
                 print("Tracker Exception in point: " + str(p) + " -> " + str(e))
+                traceback.print_exc()
             finally:
                 prediction = self.kalman.predict()
                 if prediction[0] < 0 or prediction[0] > image.shape[1]:

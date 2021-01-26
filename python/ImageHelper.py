@@ -20,6 +20,10 @@ class ImageHelper:
         new_image = image.astype(np.uint8)
         return new_image
 
+    @staticmethod
+    def make_it_gray(image: np.ndarray) -> np.ndarray:
+        return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
 class ImageFloaterStage(PipeStageProcessor):
     def __init__(self) -> None:
         super().__init__()
