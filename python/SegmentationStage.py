@@ -15,11 +15,9 @@ class SegmentationStage(PipeStageProcessor):
         self.frameMasks = np.zeros(1)#(self.frameCount, self.frameHeight, self.frameWidth,3),dtype=np.uint8)
 
     def __process__(self, sources: Dict[StageType, Tuple[ResultType, object]]) -> Tuple[ResultType, object]:
-        print("seg process")
         return (ResultType.Image, self.frameMasks[self.framenumber])#, self.frameMasks[self.framenumber])
 
     def __render__(self, result: Tuple[ResultType, object], size: Tuple[int, int]) -> np.ndarray:
-        print("seg render")
         return self.frameMasks[self.framenumber]
 
     def draw_mask(self, x, y, factor, width, frameHeight, frameWidth, framenumber, frameCount):
@@ -58,9 +56,17 @@ class SegmentationStage(PipeStageProcessor):
 
         #grayMask = ImageHelper.make_it_gray(self.frameMasks[self.framenumber])
         #im2, contours = cv2.findContours(grayMask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-        self.frameMasks[self.framenumber] = cv2.morphologyEx(self.frameMasks[self.framenumber], cv2.MORPH_CLOSE, np.ones((5,5),np.uint8), iterations=100)
-        
+        #self.frameMasks[self.framenumber] = cv2.morphologyEx(self.frameMasks[self.framenumber], cv2.MORPH_CLOSE, np.ones((5,5),np.uint8), iterations=100) 
 
 
     def update_framenumber(self,fn):
         self.framenumber = fn
+
+
+class ClosingOperation(PipeStageProcessor):
+    def __process__(self, sources: Dict[StageType, Tuple[ResultType, object]]) -> Tuple[ResultType, object]:
+        mask = sources[StageType.Segmentation][1]
+        return (ResultType.Image, cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5,5),np.uint8), iterations=100))
+
+    def __render__(self, result: Tuple[ResultType, object], size: Tuple[int, int]) -> np.ndarray:
+        return result[1]
