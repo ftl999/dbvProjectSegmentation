@@ -59,9 +59,6 @@ class SegmentationStage(PipeStageProcessor):
         #grayMask = ImageHelper.make_it_gray(self.frameMasks[self.framenumber])
         #im2, contours = cv2.findContours(grayMask, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         self.frameMasks[self.framenumber] = cv2.morphologyEx(self.frameMasks[self.framenumber], cv2.MORPH_CLOSE, np.ones((5,5),np.uint8), iterations=100)
-        #cv2.fillPoly(grayMask, )
-        #con = cv2.floodFill(self.frameMasks[self.framenumber], mask=None)
-        print("YUHUU")
         
 
 
